@@ -1,0 +1,119 @@
+1. What the Code is Attempting to Do
+The program creates a channel of functions and a set of worker goroutines that execute functions received from that channel.
+Workflow:
+Create a channel that stores functions.
+Start multiple worker goroutines.
+Workers wait for functions from the channel.
+When a function arrives, the worker executes it.
+
+2. Explanation of Important Constructs
+Goroutines
+go func() {
+A goroutine is a lightweight concurrent thread managed by the Go runtime.
+In this code, each goroutine acts as a worker that continuously listens for tasks from the channel.
+Use cases:
+parallel processing
+background tasks
+worker pools
+concurrent request handlingChannels
+cnp := make(chan func(), 10)
+This creates a buffered channel that stores functions.
+Meaning:
+Channel type → func() (functions with no arguments)
+Buffer size → 10
+So up to 10 functions can be queued before blocking.
+Example of sending a task:
+cnp <- func() {
+    fmt.Println("Task executed")
+}
+This design allows functions to be passed as jobs.
+Use cases:
+job queues
+asynchronous task processing
+event-driven systems. 
+3. Significance of the for Loop with 4 Iterations
+for i := 0; i < 4; i++
+This loop creates 4 worker goroutines.
+Each worker runs this code:
+for f := range cnp {
+    f()
+}
+Meaning:
+Wait for a function from the channelExecute the function.
+Continue waiting for more tasks.
+This pattern is known as a worker pool.
+Example:
+Worker1 → executes task
+Worker2 → executes task
+Worker3 → executes task
+Worker4 → executes task
+Benefits:
+controlled concurrency
+better CPU utilization
+avoids creating unlimited goroutines
+4. Significance of make(chan func(), 10)
+The channel has a buffer size of 10.
+This means:
+up to 10 tasks can wait in the queue
+sending tasks will not block until the buffer is full
+System capacity example:Workers running tasks: 4
+Tasks waiting in queue: 10
+This improves performance and throughput in concurrent systems.
+5. Why “HERE1” is Not Getting Printed
+The function is sent to the channel:
+cnp <- func() {
+    fmt.Println("HERE1")
+}
+However, the program immediately continues:
+fmt.Println("Hello")
+After printing "Hello", the main function exits.
+When main() exits:
+the program terminates
+all goroutines stop immediately
+So the worker goroutine may not get time to execute the function, and "HERE1" may never be printed.
+Hello6. Fixing the Issue
+The program must wait for the worker goroutines to finish executing tasks.
+Example fix using sleep:
+package main
+import (
+    "fmt"
+    "time"
+)
+
+func main() {
+    cnp := make(chan func(), 10)
+
+    for i := 0; i < 4; i++ {
+        go func() {
+            for f := range cnp {
+                f()
+            }
+        }()
+    }
+
+    cnp <- func() {
+        fmt.Println("HERE1")
+    }
+
+    fmt.Println("Hello")
+
+    time.Sleep(time.Second)
+}
+Expected output:Hello
+HERE1
+7. Real-World Use Cases
+This pattern is widely used in concurrent systems such as:
+Worker pools
+Background job processing systems.
+Task queues
+Example tasks:
+sending emails
+processing logs
+running scheduled jobsConclusion
+This code demonstrates a worker pool implementation in Go using goroutines and buffered channels.
+Key concepts illustrated:
+Goroutines for concurrency
+Channels for communication
+Worker pool pattern
+Buffered channels for task queues
+The reason "HERE1" is not printed is that the program terminates before the goroutines execute the queued function.
